@@ -326,7 +326,7 @@ Our system maps content across domains using:
 |------|----------|
 | **Akhil Varanasi** | [linkedin.com/in/akhilvaranasi ](https://www.linkedin.com/in/akhil-varanasi/)|
 | **Anshul Singhal** | [linkedin.com/in/anshulsinghal](https://www.linkedin.com/in/anshul-singhal-67102421a/) |
-| **Tanishq Sharma** | linkedin.com/in/tanishqsharma |
+| **Tanishq Sharma** | [linkedin.com/in/tanishqsharma](https://www.linkedin.com/in/tanishq-sharma-41725a1b2) |
 | **Abhidutta Mukund Giri** | [linkedin.com/in/abhidutta](https://www.linkedin.com/in/abhi-m-g-62925a218/) |
 
 ---
