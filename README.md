@@ -336,6 +336,6 @@ Our system maps content across domains using:
 - **Amazon Web Services** for cloud infrastructure and APIs
 - **HackOn with Amazon 5.0** for providing the platform and mentorship
 - **MovieLens** for comprehensive datasets
-- **Open Source Community** for libraries: `implicit`, `scikit-learn`, `sentence-transformers`, `joblib`
-- **Research Papers** that inspired our cross-domain approach
+
+  
 
