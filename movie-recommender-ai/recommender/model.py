@@ -16,6 +16,19 @@ class ContentRecommender:
         self.df = df
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
+        self.tmdb = TMDb()
+        self.tmdb.api_key = ""  # 🔁 Replace with real API key
+        self.tmdb.language = 'en'
+        self.tmdb_movie_api = Movie()
+
+        self.tmdb_cache_path = os.path.join(cache_dir, 'tmdb_fallbacks.pkl')
+        if os.path.exists(self.tmdb_cache_path):
+            with open(self.tmdb_cache_path, 'rb') as f:
+                self.tmdb_fallbacks = pickle.load(f)
+                print(f"✅ Loaded TMDb fallback cache: {len(self.tmdb_fallbacks)} entries")
+        else:
+            self.tmdb_fallbacks = {}
+
 
         self.df['genres'] = self.df['genres'].fillna('').astype(str)
         self.df['startYear'] = pd.to_numeric(self.df['startYear'], errors='coerce').fillna(0).astype(int)
@@ -50,16 +63,48 @@ class ContentRecommender:
         def get_movie_extras(row):
             title = row['primaryTitle'].lower().strip()
             year = row['startYear']
-            # First, try a direct match
+
+            # Step 1: Check exact match from imdb_top_1000
             data = self.extras_lookup.get((title, year))
             if data:
+                print(f"✅ IMDb match: {title} ({year})")
                 return pd.Series([data.get('overview', ''), data.get('stars', [])])
-            # If direct match fails, try a fuzzy match on title with the same year
+
+            # Step 2: Try fuzzy match
+            for (t, y), extras in self.extras_lookup.items():
+                if y == year and fuzz.ratio(t, title) >= 95:
+                    print(f"🤏 Fuzzy IMDb match: {title} ≈ {t} ({year})")
+                    return pd.Series([extras.get('overview', ''), extras.get('stars', [])])
+
+            # Step 3: Fallback to TMDb if not found
+            print(f"🔍 Trying TMDb fallback for {title} ({year})")
+            tmdb_key = (title, year)
+
+            if tmdb_key in self.tmdb_fallbacks:
+                tmdb_data = self.tmdb_fallbacks[tmdb_key]
             else:
-                for (t, y), extras in self.extras_lookup.items():
-                    if y == year and fuzz.ratio(t, title) >= 95:
-                        return pd.Series([extras.get('overview', ''), extras.get('stars', [])])
-            return pd.Series(['', []]) # Return empty if no match found
+                tmdb_data = {'overview': '', 'poster': '', 'tmdb_id': None}
+                try:
+                    results = self.tmdb_movie_api.search(title)
+                    for m in results:
+                        release_date = getattr(m, 'release_date', '')
+                        if release_date and str(year) in release_date:
+                            print(f"🎬 TMDb result: {getattr(m, 'title', 'Unknown')} ({release_date})")
+                            tmdb_data = {
+                                'overview': getattr(m, 'overview', '') or '',
+                                'poster': f"https://image.tmdb.org/t/p/w500{getattr(m, 'poster_path', '')}" if getattr(m, 'poster_path', None) else '',
+                                'tmdb_id': getattr(m, 'id', None)
+                            }
+                            break
+                except Exception as e:
+                    print(f"[TMDb error] {title} ({year}):", e)
+
+                # Cache the result
+                self.tmdb_fallbacks[tmdb_key] = tmdb_data
+                with open(self.tmdb_cache_path, 'wb') as f:
+                    pickle.dump(self.tmdb_fallbacks, f)
+
+            return pd.Series([tmdb_data['overview'], []])
 
         print("⏳ Enriching DataFrame with overview and stars for model building...")
         self.df[['overview', 'stars']] = self.df.apply(get_movie_extras, axis=1)
